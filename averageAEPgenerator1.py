@@ -2,11 +2,14 @@ from py_wake import NOJ
 import xarray as xr
 from py_wake.site import XRSite
 import generateMultiRotorCoordinates
+from numba import jit, cuda
+
 
 def sector_AEP(f, A, k, wd, ti, centers, my_wt, turbineDiameter, turbineTipClearence, Collumns, rows):
 
     #list of AEPs for each sector
     AEP_list = []
+
 
     # Loop through each position of A and k
     for i in range(len(A)):

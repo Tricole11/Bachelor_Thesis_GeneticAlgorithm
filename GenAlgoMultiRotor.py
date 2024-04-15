@@ -11,9 +11,9 @@ import numpy as np
 from py_wake.wind_turbines import WindTurbine
 from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
 from py_wake import NOJ 
-from numba import jit, cuda
 
-@jit(target_backend='cuda')
+
+
 def optimizeMultiRotor(turbineDiameter, rows, Collumns, N_turbineSystems, areaBoundary, f,A,k,wd,ti, iterations, populationSize, my_wt, turbineTipClearance, systemClearance):
 
     genomes = generateRandomGenomes(turbineDiameter, rows, Collumns, N_turbineSystems, areaBoundary, populationSize, turbineTipClearance, systemClearance)     #yielding a population of genomes
@@ -46,10 +46,10 @@ my_wt = WindTurbine(name='MyWT',
                     powerCtFunction=PowerCtTabular(u,power,'kW',ct))
 
 turbineDiameter = 30
-rows = 2
-collumns = 2
+rows = 6
+collumns = 6
 
 
-results = optimizeMultiRotor(turbineDiameter, rows, collumns, N_turbineSystems=10, areaBoundary=[[0,0],[1000,0],[1000,1000],[0,1000]], f=f, A=A, k=k, my_wt=my_wt, wd=wd, ti=ti, populationSize=10, iterations=4, turbineTipClearance=5, systemClearance=10)
+results = optimizeMultiRotor(turbineDiameter, rows, collumns, N_turbineSystems=10, areaBoundary=[[0,0],[1000,0],[1000,1000],[0,1000]], f=f, A=A, k=k, my_wt=my_wt, wd=wd, ti=ti, populationSize=10, iterations=2, turbineTipClearance=1, systemClearance=10)
 
 print(results)
