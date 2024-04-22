@@ -18,24 +18,23 @@ def main():
     st.write('You selected:', option)
     
     if option == 'Utsira Nord':
-        latitude, longitude = 59.48222, 4.67361
+        latitude, longitude = 59.4822222, 4.6736111
     elif option == 'Sørlige Nordsjø II':
-        latitude, longitude = 56.82333, 4.34666
+        latitude, longitude = 56.8233333, 4.3466667
 
     # Capture start and end dates from user input
+    #start_date = st.date_input("Enter start date:")
+    #end_date = st.date_input("Enter end date:")
     start_date_formatted = 20180101
     end_date_formatted = 20230101
 
     # Button to trigger wind analysis
     if st.button("Submit"):
         # Perform wind analysis
-        error = perform_wind_analysis(option, latitude, longitude, start_date_formatted, end_date_formatted)
-        if error:
-            st.error(f"An error occurred: {error}")
-        else:
-            st.success("Wind analysis completed successfully!")
-            # Display wind analysis results...
+        f, A, k = perform_wind_analysis(option, latitude, longitude, start_date_formatted, end_date_formatted)
+        print(f, A, k)
     
+    st.write('''come on, idiot, I ain't got all day...''')
     # Create a default map centered at Oslo
     m = folium.Map(location=[59.0, 5.11], zoom_start=6)
 
@@ -58,11 +57,20 @@ def main():
     folium.PolyLine(utsira_koordinater, tooltip="Utsira Nord").add_to(m)
     folium.PolyLine(SNii_koordinater, tooltip="Sørlige Norsjø II").add_to(m)
 
-    # Add a click event handler to the map
-    m.add_child(folium.ClickForMarker(popup='Latitude: {lat}, Longitude: {lon}'))
-    m.add_child(folium.ClickForLatLng())
-
     folium_static(m)
+
+
+
+
+def plot_wind_rose(wind_directions, wind_speeds, option):
+        fig, ax = plt.subplots(subplot_kw={'projection': 'windrose'})
+        ax.bar(wind_directions, wind_speeds, normed=True, opening=1, edgecolor='black', lw=0.3, nsector=36, bins =11)
+        ax.set_xticklabels(['E', '45°', 'N', '315°', 'W', '225°', 'S', '135°'])
+
+        ax.legend(title='Wind Speed (m/s)', title_fontsize=10, fontsize=8, bbox_to_anchor=(1.1, 0.40), shadow=True, frameon=True, edgecolor='black', facecolor='lightgrey')
+        ax.set_title(f'Wind Rose for {option}', fontsize=9.5, loc='center')
+        
+        return fig
 
 
 # Function to perform wind analysis
@@ -85,8 +93,9 @@ def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end
     wind_data_by_direction = [[] for _ in range(12)]
     wind_speeds = []
     wind_directions = []
+
     for line in response.text.split('\n')[11:]:
-        if line.strip() and not line.startswith("-"):
+        if line.strip():
             data = line.strip().split(",")
             if len(data) >= 5:
                 wind_speed = float(data[-1])
@@ -96,24 +105,13 @@ def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end
                 direction_group_index = int(wind_direction // 30)
                 wind_data_by_direction[direction_group_index].append((wind_speed, wind_direction))
 
-    def plot_wind_rose(wind_directions, wind_speeds, latitude, longitude):
-        fig, ax = plt.subplots(subplot_kw={'projection': 'windrose'})
-        ax.bar(wind_directions, wind_speeds, normed=True, opening=1, edgecolor='black', lw=0.3, nsector=36, bins =11)
-        ax.set_xticklabels(['E', '45°', 'N', '315°', 'W', '225°', 'S', '135°'])
 
-        ax.legend(title='Wind Speed (m/s)', title_fontsize=10, fontsize=8, bbox_to_anchor=(1.1, 0.40), shadow=True, frameon=True, edgecolor='black', facecolor='lightgrey')
-        ax.set_title(f'Wind Rose for {option}', fontsize=9.5, loc='center')
-        
-        return fig
-
-    fig = plot_wind_rose(np.array(wind_directions) % 360, np.array(wind_speeds), latitude, longitude)
+    fig = plot_wind_rose(np.array(wind_directions) % 360, np.array(wind_speeds), option)
     st.pyplot(fig)
 
 
     # Total sammenlagt Weibull Graph for alle sektorene
     shape, loc, scale = weibull_min.fit(wind_speeds, floc=0)
-    st.write("Shape parameter (k):", shape)
-    st.write("Scale parameter (c):", scale)
     x = np.linspace(0, max(wind_speeds), 100)
     weibull_pdf = weibull_min.pdf(x, shape, loc, scale)
 
@@ -129,34 +127,32 @@ def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end
     st.pyplot(fig2)
 
 
-    shape_scale= [] #Denne inneholder alle shapes og scales for de 12 sektorene. 
+    shape_scale_frequency= [] #Denne inneholder alle shapes, scales of sector frekvens for de 12 sektorene. 
     #Starter med sektor 1 (tilsvarer 0-29 grader), deretter sektor 2 (tilsvarer 30-59 grader) osv...
 
     # Plot sectors Weibull graph
     fig3, ax3 = plt.subplots(figsize=(8,4.5))
+    sector_frequency = list()
+    wind_speeds_group = [[]] * 12
+    k = list()
+    A = list()
     for i, wind_data in enumerate(wind_data_by_direction):
-        wind_speeds_group = [data[0] for data in wind_data]
-        shape, loc, scale = weibull_min.fit(wind_speeds_group, floc=0)
-        x = np.linspace(0, max(wind_speeds_group), 100)
+        sector_frequency.append(len(wind_data) / len(wind_speeds))
+        wind_speeds_group[i] = [data[0] for data in wind_data]
+        shape, loc, scale = weibull_min.fit(wind_speeds_group[i], floc=0)
+        x = np.linspace(0, max(wind_speeds_group[i]), 100)
         weibull_pdf = weibull_min.pdf(x, shape, loc, scale)
         ax3.plot(x, weibull_pdf, label=f'{(i * 30)} to {((i + 1) * 30) % 360} degrees')
-        
         # Store shape and scale parameters in the list as tuples
-        shape_scale.append((shape, scale))
-        #print(f"Jonas print{shape_scale}")
-        #print("")
-        #print("")
+        shape_scale_frequency.append([shape, scale, sector_frequency[i]])
+        k.append(shape)
+        A.append(scale)
 
-    #data_dict = {key: value for key, value in shape_scale}
-    #df = pd.DataFrame(data_dict)
+    #st.write(wind_speeds_group)
+    #st.write(f'f= {sector_frequency}')
+    
 
     # Display the table in the sidebar
-
-    df = pd.DataFrame(shape_scale, columns=["Shape", "Scale"])
-    st.sidebar.title('Weibull Factors for each wind sector')
-    df.index = [f"{i * 30}-{(i + 1) * 30} degrees" for i in range(len(df))]
-    st.sidebar.table(df)
-
 
     ax3.set_xlabel('Wind Speed (m/s)')
     ax3.set_ylabel('Probability Density')
@@ -164,15 +160,12 @@ def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end
     ax3.legend()
     st.pyplot(fig3)    
 
-    # Print shape and scale parameters as a list of tuples
-    print("Shape and Scale Parameters for each wind sector:")
-    for i, (shape, scale) in enumerate(shape_scale):
-        print(f"Sector {(i + 1)} ({(i * 30)} to {((i + 1) * 30) % 360} degrees):")
-        print("Shape parameter (k):", shape)
-        print("Scale parameter (c):", scale)
-        print()
+    df = pd.DataFrame(shape_scale_frequency, columns=["Shape, k", "Scale, A", "f"])
+    st.sidebar.title('Weibull Factors for each wind sector')
+    df.index = [f"{i * 30}-{(i + 1) * 30} degrees" for i in range(len(df))]
+    st.sidebar.table(df)
 
-    pass
+    return sector_frequency, A, k
     
 
 if __name__ == "__main__":
