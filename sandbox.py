@@ -10,7 +10,7 @@ import requests
 
 
 def main():
-    st.title("Wind analysis SKRRRR BRRRAP")
+    st.title("Wind analysis")
 
     option = st.selectbox(
     "What area do you want to analyze?",
@@ -18,15 +18,13 @@ def main():
     st.write('You selected:', option)
     
     if option == 'Utsira Nord':
-        latitude, longitude = 59.4822222, 4.6736111
+        latitude, longitude = 59.48222, 4.67361
     elif option == 'Sørlige Nordsjø II':
-        latitude, longitude = 56.8233333, 4.3466667
+        latitude, longitude = 56.82333, 4.34666
 
     # Capture start and end dates from user input
-    start_date = st.date_input("Enter start date:")
-    end_date = st.date_input("Enter end date:")
-    start_date_formatted = start_date.strftime("%Y%m%d")
-    end_date_formatted = end_date.strftime("%Y%m%d")
+    start_date_formatted = 20180101
+    end_date_formatted = 20230101
 
     # Button to trigger wind analysis
     if st.button("Submit"):
@@ -67,8 +65,6 @@ def main():
     folium_static(m)
 
 
-
-
 # Function to perform wind analysis
 def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end_date_formatted):
     # Construct URL for API request
@@ -93,11 +89,11 @@ def perform_wind_analysis(option, latitude, longitude, start_date_formatted, end
         if line.strip() and not line.startswith("-"):
             data = line.strip().split(",")
             if len(data) >= 5:
-                wind_speed = float(data[-1].replace(',', '.'))
-                wind_direction = float(data[-2].replace(',', '.'))
+                wind_speed = float(data[-1])
+                wind_direction = float(data[-2])
                 wind_speeds.append(wind_speed)
                 wind_directions.append(wind_direction)
-                direction_group_index = int(wind_direction / 30) % 12
+                direction_group_index = int(wind_direction // 30)
                 wind_data_by_direction[direction_group_index].append((wind_speed, wind_direction))
 
     def plot_wind_rose(wind_directions, wind_speeds, latitude, longitude):
